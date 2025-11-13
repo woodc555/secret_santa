@@ -3,12 +3,31 @@
     <head>
         <link rel="stylesheet" href="style/secret_santa.css">
         <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+        <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     </head>
     
     <body>
         <header>Secret Santa</header>
         
-        <p>Stuff gonna go here...</p>
+        <div class="login-prompt">
+            <div class="login-head">
+                <h3>Enter your Pin Number</h3>
+            </div>
+            
+            <div class="login-form">
+                <span class="alert alert-error" id="error-banner" style="display: none"></span>
+                <input type="text" id="pin-input" placeholder= "####">
+                <input type="submit" id="pin-submit" value="Login">
+            </div>
+        </div>
+
+        <div class="logged-in" style="display: none;">
+            <h2><span id="welcome-message">Hello User!</span> <span id="logout-button"><em>(logout)</em></span></h2>
+            <span id="prompt">
+                <p id="logged-in-prompt">Login Success!</p>
+                <button id="match-button" style="display: none;">Match</button>
+            </span>
+        </div>
 
         <script src="config.js"></script>
         <script src="secret_santa.js"></script>
