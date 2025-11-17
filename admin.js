@@ -51,7 +51,9 @@ jQuery(document).ready(function($) {
             return;
         };
 
-        allParticipants.forEach(participant => {
+        const sortedParticipants = [...allParticipants].sort((a, b) => a.id - b.id);
+
+        sortedParticipants.forEach(participant => {
            const pairing = allPairings.find(p => p.giver_id === participant.id);
 
            let receiverName = 'Not Matched';
