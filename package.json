@@ -1,0 +1,9 @@
+{
+  "name": "secret-santa",
+  "version": "1.0.0",
+  "description": "Secret Santa website",
+  "scripts": {
+    "build": "node build-config.js"
+  }
+}
+
