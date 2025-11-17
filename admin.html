@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <link rel="stylesheet" href="style/secret_santa.css">
+        <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+        <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    </head>
+
+    <body>
+        <header>Secret Santa Admin</header>
+        <a class="home-link" href="index.html">(Home)</a>
+
+        <div class="login-prompt">
+            <div class="login-head">
+                <h3>Enter your Pin Number</h3>
+            </div>
+            
+            <div class="login-form">
+                <span class="alert alert-error" id="error-banner" style="display: none"></span>
+                <input type="text" id="pin-input" placeholder= "####">
+                <input type="submit" id="pin-submit" value="Login">
+            </div>
+        </div>
+
+        <div class="logged-in" style="display: none;">
+            <h2><span id="welcome-message">Hello User!</span> <span id="logout-button"><em>(logout)</em></span></h2>
+            <span id="prompt">
+                <p id="logged-in-prompt">Login Success!</p>
+            </span>
+
+            <div id="participants-table-container">
+                <h3>Participants & Matches</h3>
+                <table id="participants-table">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Giving To</th>
+                            <th>Matched</th>
+                            <th>Family Group</th>
+                            <th>Admin</th>
+                            <th>Edit</th>
+                        </tr>
+                    </thead>
+                    <tbody id="participants-table-body">
+
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="edit-modal" style="display: none;">
+            <div class="modal-overlay">
+                <div class="modal-content">
+                    <h3>Edit Participant</h3>
+
+                    <form id="edit-form">
+                        <input type="hidden" id="edit-participant-id">
+
+                        <label>Name:</label>
+                        <input type="text" id="edit-name" required>
+
+                        <label>Giving To:</label>
+                        <select id="edit-giving-to">
+                            <option value="">Select a participant</option>
+                        </select>
+
+                        <label>Matched:</label>
+                        <input type="checkbox" id="edit-matched">
+
+                        <label>Family Group:</label>
+                        <input type="text" id="edit-family-group" required>
+
+                        <label>Admin:</label>
+                        <input type="checkbox" id="edit-admin">
+
+                        <div class="modal-buttons">
+                            <button type="button" id="cancel-edit">Cancel</button>
+                            <button type="submit" id="save-edit">Save</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <script src="config.js"></script>
+        <script src="admin.js"></script>
+    </body>
+</html>

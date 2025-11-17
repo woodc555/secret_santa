@@ -3,23 +3,37 @@ const SUPABASE_ANON_KEY = CONFIG.SUPABASE_ANON_KEY;
 
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-async function getParticipants() {
- const { data, error } = await supabase.from('participants').select('*');
-
- if (error) {
-    console.log('Error:', error);
- } else {
-    console.log('Participants:', data);
- };
-};
-
-getParticipants();
-
 console.log('Supabase connected!', supabase);
 
 jQuery(document).ready(function($) {
    let currentUser = null;
    let givingGift = null;
+
+   let allParticipants = null;
+   let allPairings = null;
+
+   async function getParticipants() {
+      const { data, error } = await supabase.from('participants').select('*');
+     
+      if (error) {
+         console.log('Error:', error);
+         allParticipants = [];
+      } else {
+         allParticipants = data;
+      };
+     };
+     getParticipants();
+
+   async function getPairings() {
+      const {data: pairings, error: fetchError} = await supabase.from('pairings').select('giver_id, receiver_id');
+      if (fetchError) {
+         console.log('Fetch Pairings Error:', fetchError);
+         allPairings = [];
+      } else {
+         allPairings = pairings;
+      }
+   }
+   getPairings();
 
    const savedUser = localStorage.getItem('currentUser');
    const isLoggedIn = localStorage.getItem('isLoggedIn');
@@ -30,14 +44,33 @@ jQuery(document).ready(function($) {
       loggedInUser();
    }
 
-   function loggedInUser() {
+   async function loggedInUser() {
       $('.logged-in').show();
       $('.login-prompt').hide();
 
       $('#welcome-message').text(`Hello ${currentUser.name}!`);
 
+      if (currentUser.is_admin === true) {
+         $('.admin-link').show();
+      } else {
+         $('.admin-link').hide();
+      }
+
       if (currentUser.matched == true) {
-         $('#logged-in-prompt').text('You are Secret Santa to insert name here!');
+         if (!allPairings || allPairings.length === 0) {
+            await getPairings();
+         }
+         if (!allParticipants || allParticipants.length === 0) {
+            await getParticipants();
+         }
+         
+         const userPairing = allPairings.find(pairing => pairing.giver_id === currentUser.id);
+         
+         const receiverId = userPairing.receiver_id;
+         const receiver = allParticipants.find(participant => participant.id === receiverId);
+         
+         $('#logged-in-prompt').text(`You are Secret Santa to ${receiver.name}!`);
+         
       } else {
          $('#logged-in-prompt').text('Press the Button Below ');
          $('#match-button').show();
@@ -62,7 +95,7 @@ jQuery(document).ready(function($) {
          localStorage.setItem('currentUser', JSON.stringify(currentUser));
          localStorage.setItem('isLoggedIn', true);
 
-         loggedInUser();
+         await loggedInUser();
       }
 
    });
@@ -146,5 +179,6 @@ jQuery(document).ready(function($) {
       $('#pin-input').val('');
       $('.logged-in').hide();
       $('.login-prompt').show();
+      $('.admin-link').hide(); // Hide admin link on logout
    });
 });
