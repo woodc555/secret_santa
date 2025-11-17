@@ -71,10 +71,13 @@ jQuery(document).ready(function($) {
          const receiver = allParticipants.find(participant => participant.id === receiverId);
          
          $('#logged-in-prompt').text(`You are Secret Santa to ${receiver.name}!`);
+
+         loadReceiverWishlist(receiverId);
          
       } else {
          $('#logged-in-prompt').text('Press the Button Below ');
          $('#match-button').show();
+         $('#receiver-wishlist-container').hide();
       };      
    };
 
@@ -105,6 +108,47 @@ jQuery(document).ready(function($) {
 
          wishlistContainer.append(itemHtml);
       });
+   };
+
+   function loadReceiverWishlist(receiverId) {
+      const container = $('#receiver-wishlist-container');
+      const itemsList = $('#receiver-wishlist-items');
+      const title = $('#receiver-wishlist-title');
+
+      const receiver = allParticipants.find(participant => participant.id === receiverId);
+      
+      if (!receiver) {
+         console.error('Receiver not found');
+         container.hide();
+         return;
+      }
+
+      container.show();
+
+      title.text(`${receiver.name}'s Wishlist`);
+
+      itemsList.empty();
+
+      let wishList = [];
+      if (receiver.wishlist) {
+         wishList = typeof receiver.wishlist === 'string' ? JSON.parse(receiver.wishlist) : receiver.wishlist;
+      };
+
+      if (wishList.length === 0) {
+         itemsList.append('<li>No items on the wishlist yet.</li>');
+      } else {
+         wishList.forEach((item, index) => {
+            const itemHtml = `
+               <li class="receiver-wishlist-item">
+                  <div class="item-name">${item.name || 'Unnamed Item'}</div>
+                  <div class="item-link">
+                     <a href="${item.link}" target="_blank">${item.link || 'No Link'}</a>
+                  </div>
+               </li>
+            `;
+            itemsList.append(itemHtml);
+         });
+      };
    };
 
    async function saveWishlist(wishListArray) {
