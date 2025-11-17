@@ -31,8 +31,8 @@ jQuery(document).ready(function($) {
          allPairings = [];
       } else {
          allPairings = pairings;
-      }
-   }
+      };
+   };
    getPairings();
 
    const savedUser = localStorage.getItem('currentUser');
@@ -42,27 +42,28 @@ jQuery(document).ready(function($) {
       currentUser = JSON.parse(savedUser);
 
       loggedInUser();
-   }
+   };
 
    async function loggedInUser() {
       $('.logged-in').show();
       $('.login-prompt').hide();
 
       $('#welcome-message').text(`Hello ${currentUser.name}!`);
+      loadWishlist();
 
       if (currentUser.is_admin === true) {
          $('.admin-link').show();
       } else {
          $('.admin-link').hide();
-      }
+      };
 
       if (currentUser.matched == true) {
          if (!allPairings || allPairings.length === 0) {
             await getPairings();
-         }
+         };
          if (!allParticipants || allParticipants.length === 0) {
             await getParticipants();
-         }
+         };
          
          const userPairing = allPairings.find(pairing => pairing.giver_id === currentUser.id);
          
@@ -74,7 +75,127 @@ jQuery(document).ready(function($) {
       } else {
          $('#logged-in-prompt').text('Press the Button Below ');
          $('#match-button').show();
-      }      
+      };      
+   };
+
+   function loadWishlist() {
+      const wishlistContainer = $('#wishlist-items');
+      wishlistContainer.empty();
+
+      let wishList = [];
+      if (currentUser.wishlist) {
+         wishList = typeof currentUser.wishlist === 'string' ? JSON.parse(currentUser.wishlist) : currentUser.wishlist;
+      };
+
+      wishList.forEach((item, index) => {
+         const itemHtml = `
+            <li class="wishlist-item" data-index="${index}">
+               <div class="item-display">
+                  <div class="item-name">${item.name || 'Unnamed Item'}</div>
+                  <div class="item-link">
+                     <a href="${item.link}" target="_blank">${item.link || 'No Link'}</a>
+                  </div>
+               </div>
+               <div class="item-actions">
+                  <button class="edit-item" data-index="${index}">Edit</button>
+                  <button class="delete-item" data-index="${index}">Delete</button>
+               </div>
+            </li>
+         `;
+
+         wishlistContainer.append(itemHtml);
+      });
+   };
+
+   async function saveWishlist(wishListArray) {
+      const wishlistJson = JSON.stringify(wishListArray);
+
+      if (!currentUser || !currentUser.id) {
+         console.error('currentUser.id is missing');
+         alert('Error: User ID not found. Please log in again.');
+         return false;
+      }
+
+      console.log('Saving wishlist for user ID:', currentUser.id);
+
+      const {data, error} = await supabase.from('participants').update({wishlist: wishlistJson}).eq('id', currentUser.id).select().single();
+      if (error) {
+         console.error('Error saving wishlist:', error);
+         alert('Failed to save wishlist: ' + error.message);
+         return false;
+      }
+
+      console.log('Wishlist saved successfully:', data);
+
+      currentUser.wishlist = wishlistJson;
+      localStorage.setItem('currentUser', JSON.stringify(currentUser));
+
+      return true;
+   };
+
+   async function addWishlistItem(name, link) {
+      let wishList = [];
+      if (currentUser.wishlist) {
+         wishList = typeof currentUser.wishlist === 'string' ? JSON.parse(currentUser.wishlist) : currentUser.wishlist;
+      };
+
+      wishList.push({name: name, link: link});
+
+      const success = await saveWishlist(wishList);
+      if (success) {
+         loadWishlist();
+      }
+   };
+   
+   async function removeWishlistItem(index) {
+      let wishList = [];
+      if (currentUser.wishlist) {
+         wishList = typeof currentUser.wishlist === 'string' ? JSON.parse(currentUser.wishlist) : currentUser.wishlist;
+      };
+
+      wishList.splice(index, 1);
+
+      const success = await saveWishlist(wishList);
+      if (success) {
+         loadWishlist();
+      };
+   };
+
+   async function editWishlistItem(index, newName, newLink) {
+      let wishList = [];
+      if (currentUser.wishlist) {
+         wishList = typeof currentUser.wishlist === 'string' ? JSON.parse(currentUser.wishlist) : currentUser.wishlist;
+      };
+
+      wishList[index] = {name: newName, link: newLink};
+
+      const success = await saveWishlist(wishList);
+      if (success) {
+         loadWishlist();
+      };
+   };
+
+   function showEditForm(index) {
+      let wishList = [];
+      if (currentUser.wishlist) {
+         wishList = typeof currentUser.wishlist === 'string' ? JSON.parse(currentUser.wishlist) : currentUser.wishlist;
+      };
+
+      const item = wishList[index];
+      const listItem = $(`.wishlist-item[data-index="${index}"]`);
+
+      const editForm = `
+         <div class="item-edit">
+            <input type="text" id="edit-item-name" value="${item.name || ''}" data-index="${index}">
+            <input type="url" id="edit-item-link" value="${item.link || ''}" data-index="${index}">
+            <button class="save-edit-btn" data-index="${index}">Save</button>
+            <button class="cancel-edit-btn" data-index="${index}">Cancel</button>
+         </div>
+      `;
+
+      // Replace the item display with edit form
+      listItem.find('.item-display, .item-actions').hide();
+      listItem.append(editForm);
    }
 
    $('#pin-submit').click(async function() {
@@ -169,6 +290,49 @@ jQuery(document).ready(function($) {
       $('#match-button').hide();
    });
 
+   $('#add-item').click(function() {
+      $('#add-item-form').show();
+   });
+
+   $('#save-new-item').click(async function() {
+      const name = $('#new-item-name').val();
+      const link = $('#new-item-link').val();
+
+      if (!name.trim()) {
+         alert('Please enter a name for the item.');
+         return;
+      };
+
+      await addWishlistItem(name, link);
+      $('#new-item-name').val('');
+      $('#new-item-link').val('');
+      $('#add-item-form').hide();
+   });
+
+   $(document).on('click', '.edit-item', function() {
+      const index = parseInt($(this).data('index'));
+      showEditForm(index);
+   });
+
+   $(document).on('click', '.delete-item', async function() {
+      const index = parseInt($(this).data('index'));
+      if (confirm('Are you sure you want to delete this item?')) {
+         await removeWishlistItem(index);
+      }
+   });
+
+   $(document).on('click', '.save-edit-btn', async function() {
+      const index = parseInt($(this).data('index'));
+      const listItem = $(`.wishlist-item[data-index="${index}"]`);
+      const name = listItem.find('#edit-item-name').val();
+      const link = listItem.find('#edit-item-link').val();
+      await editWishlistItem(index, name, link);
+   });
+
+   $(document).on('click', '.cancel-edit-btn', function() {
+      loadWishlist();
+   });
+
    $('#logout-button').click(function() {
       localStorage.removeItem('currentUser');
       localStorage.removeItem('isLoggedIn');
@@ -179,6 +343,6 @@ jQuery(document).ready(function($) {
       $('#pin-input').val('');
       $('.logged-in').hide();
       $('.login-prompt').show();
-      $('.admin-link').hide(); // Hide admin link on logout
+      $('.admin-link').hide();
    });
 });
