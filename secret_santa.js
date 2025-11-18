@@ -96,8 +96,8 @@ jQuery(document).ready(function($) {
          const itemHtml = `
             <li class="wishlist-item" data-index="${index}">
                <div class="item-display">
-                  <div class="item-name">${item.name || 'Unnamed Item'}</div>
-                  <div class="item-link">
+                  <div class="item-name item-details">${item.name || 'Unnamed Item'}</div>
+                  <div class="item-link item-details">
                      <a href="${item.link}" target="_blank">${item.link || 'No Link'}</a>
                   </div>
                </div>
