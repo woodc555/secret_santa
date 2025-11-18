@@ -1,17 +1,22 @@
 <!DOCTYPE html>
 <html>
     <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <link rel="stylesheet" href="style/secret_santa.css">
         <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
         <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     </head>
     
     <body>
-        <header>Secret Santa</header>
-        <a class="admin-link" href="admin.html" style="display: none;">(Admin)</a>
+        <header style="display: none;">Secret Santa</header>
+        <div id="nav">
+            <button id="logout-button" class="nav-button" style="display: none;">logout</button>
+            <button class="admin-link nav-button" style="display: none;"><a href="admin.html">Admin</a></button>
+        </div>
         
         <div class="login-prompt">
             <div class="login-head">
+                <h1>Secret Santa</h1>
                 <h3>Enter your Pin Number</h3>
             </div>
             
@@ -23,28 +28,37 @@
         </div>
 
         <div class="logged-in" style="display: none;">
-            <h2><span id="welcome-message">Hello User!</span> <span id="logout-button"><em>(logout)</em></span></h2>
-            <span id="prompt">
-                <p id="logged-in-prompt">Login Success!</p>
-                <button id="match-button" style="display: none;">Match</button>
-            </span>
+            <span id="top-container">
+                <h2 id="welcome-message">Hello User!</h2>
+                <span id="prompt">
+                    <p id="logged-in-prompt">Login Success!</p>
+                    <button id="match-button" style="display: none;">Match</button>
+                </span>
 
-            <span id="receiver-wishlist-container" style="display: none;">
-                <h3 id="receiver-wishlist-title">Your Match's Wishlist</h3>
-                <ul id="receiver-wishlist-items">
+                <span id="receiver-wishlist-container" style="display: none;">
+                    <h3 id="receiver-wishlist-title">Your Match's Wishlist</h3>
+                    <ul id="receiver-wishlist-items">
 
-                </ul>
+                    </ul>
+                </span>
             </span>
 
             <span id="wishlist-container">
-                <h3>Your Wishlist</h3>
-                <button id="add-item">Add Item</button>
+                <span id="wishlist-header-container">
+                    <h3>Your Wishlist</h3>
+                    <button id="add-item">Add Item</button>
+                </span>
                 <div id="add-item-form" style="display: none;">
-                    <input type="text" id="new-item-name" placeholder="Item name">
-                    <input type="url" id="new-item-link" placeholder="Item link (URL)">
-                    <button id="save-new-item">Add</button>
-                    <button id="cancel-add-item">Cancel</button>
+                    <span id="new-item-form-container">
+                        <input type="text" id="new-item-name" class="new-item-input" placeholder="Item name">
+                        <input type="url" id="new-item-link" class="new-item-input" placeholder="Item link (URL)">
+                    </span>
+                    <span id="new-item-button-container">
+                        <button id="save-new-item" class="new-item-button">Add</button>
+                        <button id="cancel-add-item" class="new-item-button">Cancel</button>
+                    </span>
                  </div>
+                 <p>Add items or an external list and your Secret Santa will see them!</p>
                 <ul id="wishlist-items">
 
                 </ul>

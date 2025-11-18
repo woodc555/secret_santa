@@ -45,6 +45,8 @@ jQuery(document).ready(function($) {
    };
 
    async function loggedInUser() {
+      $('header').show();
+      $('#logout-button').show();
       $('.logged-in').show();
       $('.login-prompt').hide();
 
@@ -336,6 +338,7 @@ jQuery(document).ready(function($) {
 
    $('#add-item').click(function() {
       $('#add-item-form').show();
+      $('#add-item').hide();
    });
 
    $('#save-new-item').click(async function() {
@@ -351,6 +354,14 @@ jQuery(document).ready(function($) {
       $('#new-item-name').val('');
       $('#new-item-link').val('');
       $('#add-item-form').hide();
+      $('#add-item').show();
+   });
+
+   $('#cancel-add-item').click(function() {
+      $('#new-item-name').val('');
+      $('#new-item-link').val('');
+      $('#add-item-form').hide();
+      $('#add-item').show();
    });
 
    $(document).on('click', '.edit-item', function() {
@@ -378,6 +389,8 @@ jQuery(document).ready(function($) {
    });
 
    $('#logout-button').click(function() {
+      $('header').hide();
+      $('#logout-button').hide();
       localStorage.removeItem('currentUser');
       localStorage.removeItem('isLoggedIn');
 
