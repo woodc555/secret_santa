@@ -102,8 +102,8 @@ jQuery(document).ready(function($) {
                   </div>
                </div>
                <div class="item-actions">
-                  <button class="edit-item" data-index="${index}">Edit</button>
-                  <button class="delete-item" data-index="${index}">Delete</button>
+                  <button class="edit-item item-action-button" data-index="${index}">Edit</button>
+                  <button class="delete-item item-action-button" data-index="${index}">Delete</button>
                </div>
             </li>
          `;
