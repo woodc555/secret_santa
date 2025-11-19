@@ -294,8 +294,8 @@ jQuery(document).ready(function($) {
       const eligibleParticipants = allParticipants.filter(participant => {
          return participant.id !== currentUser.id 
          && participant.family_group !== currentUser.family_group 
-         && !participant.matched
-         && !takenReceiverIds.includes(participant.id);
+         && !takenReceiverIds.includes(participant.id)
+         && !participant.opt_out;
       });
 
       if (eligibleParticipants.length === 0) {
