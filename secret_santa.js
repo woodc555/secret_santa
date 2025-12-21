@@ -1,9 +1,9 @@
 const SUPABASE_URL = CONFIG.SUPABASE_URL;
 const SUPABASE_ANON_KEY = CONFIG.SUPABASE_ANON_KEY;
 
-const supabaseClientClient = window.supabaseClient.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-console.log('Supabase connected!', supabaseClientClient);
+console.log('Supabase connected!', supabaseClient);
 
 jQuery(document).ready(function($) {
    let currentUser = null;
