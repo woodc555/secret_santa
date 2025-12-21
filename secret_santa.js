@@ -1,9 +1,9 @@
 const SUPABASE_URL = CONFIG.SUPABASE_URL;
 const SUPABASE_ANON_KEY = CONFIG.SUPABASE_ANON_KEY;
 
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const supabaseClientClient = window.supabaseClient.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-console.log('Supabase connected!', supabase);
+console.log('Supabase connected!', supabaseClientClient);
 
 jQuery(document).ready(function($) {
    let currentUser = null;
@@ -13,7 +13,7 @@ jQuery(document).ready(function($) {
    let allPairings = null;
 
    async function getParticipants() {
-      const { data, error } = await supabase.from('participants').select('*');
+      const { data, error } = await supabaseClient.from('participants').select('*');
      
       if (error) {
          console.log('Error:', error);
@@ -25,7 +25,7 @@ jQuery(document).ready(function($) {
      getParticipants();
 
    async function getPairings() {
-      const {data: pairings, error: fetchError} = await supabase.from('pairings').select('giver_id, receiver_id');
+      const {data: pairings, error: fetchError} = await supabaseClient.from('pairings').select('giver_id, receiver_id');
       if (fetchError) {
          console.log('Fetch Pairings Error:', fetchError);
          allPairings = [];
@@ -164,7 +164,7 @@ jQuery(document).ready(function($) {
 
       console.log('Saving wishlist for user ID:', currentUser.id);
 
-      const {data, error} = await supabase.from('participants').update({wishlist: wishlistJson}).eq('id', currentUser.id).select().single();
+      const {data, error} = await supabaseClient.from('participants').update({wishlist: wishlistJson}).eq('id', currentUser.id).select().single();
       if (error) {
          console.error('Error saving wishlist:', error);
          alert('Failed to save wishlist: ' + error.message);
@@ -247,7 +247,7 @@ jQuery(document).ready(function($) {
    $('#pin-submit').click(async function() {
       const pin = $('#pin-input').val();
 
-      const {data, error} = await supabase.from('participants').select('*').eq('pin', pin).single();
+      const {data, error} = await supabaseClient.from('participants').select('*').eq('pin', pin).single();
 
       if (pin === ''){
          $('#error-banner').text('Please Enter a Pin').show();
@@ -271,7 +271,7 @@ jQuery(document).ready(function($) {
       $('#match-button').prop('disabled', true);
       $('#match-button').text('Matching...');
 
-      const {data: allParticipants, error: fetchError} = await supabase.from('participants').select('*');
+      const {data: allParticipants, error: fetchError} = await supabaseClient.from('participants').select('*');
       if (fetchError) {
          console.log('Fetch All Error:', fetchError);
 
@@ -280,7 +280,7 @@ jQuery(document).ready(function($) {
          return;
       }
 
-      const {data:existingPairings, error: pairingError} = await supabase.from('pairings').select('receiver_id');
+      const {data:existingPairings, error: pairingError} = await supabaseClient.from('pairings').select('receiver_id');
       if (pairingError) {
          console.log('Pairing Error:', pairingError);
 
@@ -309,7 +309,7 @@ jQuery(document).ready(function($) {
       const randomIndex = Math.floor(Math.random() * eligibleParticipants.length);
       const matchedParticipant = eligibleParticipants[randomIndex];
 
-      const {data: newPairing, error: insertError} = await supabase.from('pairings').insert({giver_id: currentUser.id, receiver_id: matchedParticipant.id}).select().single();
+      const {data: newPairing, error: insertError} = await supabaseClient.from('pairings').insert({giver_id: currentUser.id, receiver_id: matchedParticipant.id}).select().single();
       if (insertError) {
          console.log('Insert Error:', insertError);
 
@@ -319,7 +319,7 @@ jQuery(document).ready(function($) {
          return;
       }
 
-      const {error: updateError} = await supabase.from('participants').update({matched:true}).eq('id', currentUser.id);
+      const {error: updateError} = await supabaseClient.from('participants').update({matched:true}).eq('id', currentUser.id);
       if (updateError) {
          console.log('Update Error:', updateError);
 

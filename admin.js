@@ -1,9 +1,9 @@
 const SUPABASE_URL = CONFIG.SUPABASE_URL;
 const SUPABASE_ANON_KEY = CONFIG.SUPABASE_ANON_KEY;
 
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const supabaseClientClient = window.supabaseClient.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-console.log('Supabase connected!', supabase);
+console.log('Supabase connected!', supabaseClientClient);
 
 jQuery(document).ready(function($) {
     let currentUser = null;
@@ -25,7 +25,7 @@ jQuery(document).ready(function($) {
     };
 
     async function fetchPairings() {
-        const {data: participants, error: participantsError} = await supabase.from('participants').select('*');
+        const {data: participants, error: participantsError} = await supabaseClient.from('participants').select('*');
         if (participantsError) {
             console.log('Error Fetching Participants:', participantsError);
             allParticipants = [];
@@ -33,7 +33,7 @@ jQuery(document).ready(function($) {
             allParticipants = participants;
         };
 
-        const {data: pairings, error: pairingsError} = await supabase.from('pairings').select('*');
+        const {data: pairings, error: pairingsError} = await supabaseClient.from('pairings').select('*');
         if (pairingsError) {
             console.log('Error Fetching Pairings:', pairingsError);
             allPairings = [];
@@ -140,7 +140,7 @@ jQuery(document).ready(function($) {
             is_admin: isAdmin,
         };
 
-        const {data, error} = await supabase.from('participants').update(updateData).eq('id', participantId).select().single();
+        const {data, error} = await supabaseClient.from('participants').update(updateData).eq('id', participantId).select().single();
         if (error) {
             console.log('Error Updating Participant:', error);
             alert('Failed to update participant: ' + error.message);
@@ -157,7 +157,7 @@ jQuery(document).ready(function($) {
         const existingPairing = allPairings.find(p => p.giver_id === participantId);
         if (givingToId && givingToId !== '') {
         if (existingPairing) {
-            const {error: pairingError} = await supabase.from('pairings').update({receiver_id: givingToId}).eq('id', existingPairing.id);
+            const {error: pairingError} = await supabaseClient.from('pairings').update({receiver_id: givingToId}).eq('id', existingPairing.id);
             if (pairingError) {
                 console.log('Error Updating Pairing:', pairingError);
                 alert('Failed to update pairing. Please try again.');
@@ -168,7 +168,7 @@ jQuery(document).ready(function($) {
                 };
             };
         } else {
-            const {data: newPairing, error: pairingError} = await supabase.from('pairings').insert({giver_id: participantId, receiver_id: givingToId}).select().single();
+            const {data: newPairing, error: pairingError} = await supabaseClient.from('pairings').insert({giver_id: participantId, receiver_id: givingToId}).select().single();
             if (pairingError) {
                 console.log('Error Creating Pairing:', pairingError);
                 alert('Failed to create pairing. Please try again.');
@@ -177,7 +177,7 @@ jQuery(document).ready(function($) {
             };
         };
         } else {
-            const {error: pairingError} = await supabase
+            const {error: pairingError} = await supabaseClient
                 .from('pairings')
                 .delete()
                 .eq('giver_id', participantId);
@@ -193,7 +193,7 @@ jQuery(document).ready(function($) {
         const hasPairing = givingToId && givingToId !== '';
 
         if (matched !== hasPairing) {
-            const {error: updateError} = await supabase.from('participants').update({matched: matched}).eq('id', participantId);
+            const {error: updateError} = await supabaseClient.from('participants').update({matched: matched}).eq('id', participantId);
             if (!updateError) {
                 const participantIndex = allParticipants.findIndex(p => p.id === participantId);
                 if (participantIndex !== -1) {
@@ -238,7 +238,7 @@ jQuery(document).ready(function($) {
             return;
         };
 
-        const {data, error} = await supabase.from('participants').select('*').eq('pin', pin).single();
+        const {data, error} = await supabaseClient.from('participants').select('*').eq('pin', pin).single();
         if (error) {
             $('#error-banner').text('Invalid Pin or Non-Existent Pin').show();
             return;
