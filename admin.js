@@ -1,18 +1,14 @@
-const SUPABASE_URL = CONFIG.SUPABASE_URL;
-const SUPABASE_ANON_KEY = CONFIG.SUPABASE_ANON_KEY;
-
-const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-console.log('Supabase connected!', supabaseClient);
-
 jQuery(document).ready(function($) {
     let currentUser = null;
-
     let allParticipants = null;
     let allPairings = null;
 
-    const savedUser = localStorage.getItem('currentUser');
-    const isLoggedIn = localStorage.getItem('isLoggedIn');
+    function clearSession() {
+        API.logout();
+        localStorage.removeItem('currentUser');
+        localStorage.removeItem('isLoggedIn');
+        currentUser = null;
+    }
 
     async function loggedInAdmin() {
         $('.login-prompt').hide();
@@ -20,26 +16,25 @@ jQuery(document).ready(function($) {
         $('#welcome-message').text(`Hello ${currentUser.name}!`);
 
         await fetchPairings();
-
         buildParticipantsTable();
     };
 
     async function fetchPairings() {
-        const {data: participants, error: participantsError} = await supabaseClient.from('participants').select('*');
-        if (participantsError) {
-            console.log('Error Fetching Participants:', participantsError);
+        try {
+            const data = await API.adminParticipants();
+            allParticipants = data.participants;
+            allPairings = data.pairings;
+        } catch (error) {
+            console.log('Error Fetching Participants:', error);
             allParticipants = [];
-        } else {
-            allParticipants = participants;
-        };
-
-        const {data: pairings, error: pairingsError} = await supabaseClient.from('pairings').select('*');
-        if (pairingsError) {
-            console.log('Error Fetching Pairings:', pairingsError);
             allPairings = [];
-        } else {
-            allPairings = pairings;
-        };
+            if (error.status === 401 || error.status === 403) {
+                clearSession();
+                $('.logged-in').hide();
+                $('.login-prompt').show();
+                $('#error-banner').text(error.message).show();
+            }
+        }
     };
 
     function buildParticipantsTable() {
@@ -47,7 +42,7 @@ jQuery(document).ready(function($) {
         tableBody.empty();
 
         if (!allParticipants || allParticipants.length === 0) {
-            tableBody.append('<tr><td colspan="5">No participants found</td></tr>');
+            tableBody.append('<tr><td colspan="6">No participants found</td></tr>');
             return;
         };
 
@@ -89,7 +84,6 @@ jQuery(document).ready(function($) {
 
         $('#edit-participant-id').val(participant.id);
         $('#edit-name').val(participant.name);
-        $('#edit-giving-to').val(participant.giving_to);
         $('#edit-matched').prop('checked', participant.matched);
         $('#edit-family-group').val(participant.family_group);
         $('#edit-admin').prop('checked', participant.is_admin);
@@ -126,101 +120,31 @@ jQuery(document).ready(function($) {
         const isAdmin = $('#edit-admin').prop('checked');
         const givingToId = $('#edit-giving-to').val();
 
-        console.log('Saving participant:', { participantId, name, matched, familyGroup, isAdmin, givingToId });
-
         if (!participantId) {
             alert('Error: Participant ID is missing. Please try again.');
             return;
         }
 
-        const updateData = {
-            name: name,
-            matched: matched,
-            family_group: familyGroup,
-            is_admin: isAdmin,
-        };
-
-        const {data, error} = await supabaseClient.from('participants').update(updateData).eq('id', participantId).select().single();
-        if (error) {
+        try {
+            await API.updateParticipant(participantId, {
+                name: name,
+                matched: matched,
+                family_group: familyGroup,
+                is_admin: isAdmin,
+                receiver_id: givingToId === '' ? null : givingToId,
+            });
+            await fetchPairings();
+            buildParticipantsTable();
+            closeEditModal();
+        } catch (error) {
             console.log('Error Updating Participant:', error);
             alert('Failed to update participant: ' + error.message);
-            return;
         }
-
-        console.log('Participant updated successfully:', data);
-
-        const index = allParticipants.findIndex(p => p.id === participantId);
-        if (index !== -1) {
-            allParticipants[index] = data;
-        };
-
-        const existingPairing = allPairings.find(p => p.giver_id === participantId);
-        if (givingToId && givingToId !== '') {
-        if (existingPairing) {
-            const {error: pairingError} = await supabaseClient.from('pairings').update({receiver_id: givingToId}).eq('id', existingPairing.id);
-            if (pairingError) {
-                console.log('Error Updating Pairing:', pairingError);
-                alert('Failed to update pairing. Please try again.');
-            } else {
-                const pairingIndex = allPairings.findIndex(p => p.id === existingPairing.id);
-                if (pairingIndex !== -1) {
-                    allPairings[pairingIndex].receiver_id = givingToId;
-                };
-            };
-        } else {
-            const {data: newPairing, error: pairingError} = await supabaseClient.from('pairings').insert({giver_id: participantId, receiver_id: givingToId}).select().single();
-            if (pairingError) {
-                console.log('Error Creating Pairing:', pairingError);
-                alert('Failed to create pairing. Please try again.');
-            } else{
-                allPairings.push(newPairing);
-            };
-        };
-        } else {
-            const {error: pairingError} = await supabaseClient
-                .from('pairings')
-                .delete()
-                .eq('giver_id', participantId);
-            
-            if (pairingError) {
-                console.log('Error Deleting Pairing:', pairingError);
-                alert('Failed to delete pairing. Please try again.');
-            } else {
-                allPairings = allPairings.filter(p => p.giver_id !== participantId);
-            }
-        }
-
-        const hasPairing = givingToId && givingToId !== '';
-
-        if (matched !== hasPairing) {
-            const {error: updateError} = await supabaseClient.from('participants').update({matched: matched}).eq('id', participantId);
-            if (!updateError) {
-                const participantIndex = allParticipants.findIndex(p => p.id === participantId);
-                if (participantIndex !== -1) {
-                    allParticipants[participantIndex].matched = matched;
-                };
-            };
-        };
-
-        await fetchPairings();
-        
-        buildParticipantsTable();
-        closeEditModal();
     };
 
     function closeEditModal() {
         $('#edit-modal').hide();
         $('#edit-form')[0].reset();
-    };
-
-    if (savedUser && isLoggedIn) {
-        currentUser = JSON.parse(savedUser);
-
-        if (currentUser.is_admin === true) {
-            loggedInAdmin();
-        } else {
-            window.location.href = 'index.html';
-        };
     };
 
     $('#pin-submit').click(async function() {
@@ -238,31 +162,26 @@ jQuery(document).ready(function($) {
             return;
         };
 
-        const {data, error} = await supabaseClient.from('participants').select('*').eq('pin', pin).single();
-        if (error) {
-            $('#error-banner').text('Invalid Pin or Non-Existent Pin').show();
-            return;
-        };
+        try {
+            const user = await API.login(pin);
+            if (user.is_admin !== true) {
+                API.logout();
+                $('#error-banner').text('Access Denied. Admin Access Required').show();
+                return;
+            }
 
-        if (data.is_admin === true) {
-            currentUser = data;
+            currentUser = user;
             localStorage.setItem('currentUser', JSON.stringify(currentUser));
             localStorage.setItem('isLoggedIn', true);
-
             $('#pin-input').val('');
-
             loggedInAdmin();
-        } else {
-            $('#error-banner').text('Access Denied. Admin Access Required').show();
-            return;
-        };
+        } catch (error) {
+            $('#error-banner').text(error.message || 'Invalid Pin or Non-Existent Pin').show();
+        }
     });
 
     $('#logout-button').click(function() {
-        localStorage.removeItem('currentUser');
-        localStorage.removeItem('isLoggedIn');
-        
-        currentUser = null;
+        clearSession();
         
         $('#pin-input').val('');
         
@@ -277,11 +196,10 @@ jQuery(document).ready(function($) {
     });
 
     $('#save-edit').click(async function(e) {
-        e.preventDefault(); // Prevent form submission
+        e.preventDefault();
         await saveParticipantEdit();
     });
 
-    // Also prevent form submission on form submit
     $('#edit-form').on('submit', function(e) {
         e.preventDefault();
         saveParticipantEdit();
@@ -293,7 +211,6 @@ jQuery(document).ready(function($) {
 
     $('#edit-giving-to').on('change', function() {
         const selectedValue = $(this).val();
-
         $('#edit-matched').prop('checked', selectedValue !== '' && selectedValue !== null);
     });
 
@@ -303,4 +220,25 @@ jQuery(document).ready(function($) {
         }
     });
 
+    async function restoreAdminSession() {
+        if (!API.token) {
+            return;
+        }
+
+        try {
+            const data = await API.me();
+            if (data.user.is_admin !== true) {
+                window.location.href = 'index.html';
+                return;
+            }
+            currentUser = data.user;
+            localStorage.setItem('currentUser', JSON.stringify(currentUser));
+            localStorage.setItem('isLoggedIn', true);
+            loggedInAdmin();
+        } catch (error) {
+            clearSession();
+        }
+    }
+
+    restoreAdminSession();
 });

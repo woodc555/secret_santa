@@ -2,8 +2,16 @@
   "name": "secret-santa",
   "version": "1.0.0",
   "description": "Secret Santa website",
+  "main": "server.js",
   "scripts": {
-    "build": "node build-config.js"
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "pg": "^8.13.1"
   }
 }
-

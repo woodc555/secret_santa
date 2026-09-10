@@ -1,0 +1,18 @@
+CREATE TABLE IF NOT EXISTS participants (
+  id SERIAL PRIMARY KEY,
+  name TEXT NOT NULL,
+  pin TEXT NOT NULL UNIQUE,
+  matched BOOLEAN NOT NULL DEFAULT FALSE,
+  family_group TEXT,
+  is_admin BOOLEAN NOT NULL DEFAULT FALSE,
+  opt_out BOOLEAN NOT NULL DEFAULT FALSE,
+  wishlist JSONB NOT NULL DEFAULT '[]'::jsonb
+);
+
+CREATE TABLE IF NOT EXISTS pairings (
+  id SERIAL PRIMARY KEY,
+  giver_id INTEGER NOT NULL UNIQUE REFERENCES participants(id) ON DELETE CASCADE,
+  receiver_id INTEGER NOT NULL REFERENCES participants(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS pairings_receiver_id_idx ON pairings (receiver_id);

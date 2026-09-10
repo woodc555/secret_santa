@@ -1,54 +1,57 @@
-const SUPABASE_URL = CONFIG.SUPABASE_URL;
-const SUPABASE_ANON_KEY = CONFIG.SUPABASE_ANON_KEY;
-
-const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-console.log('Supabase connected!', supabaseClient);
-
 jQuery(document).ready(function($) {
    let currentUser = null;
    let givingGift = null;
+   let assignment = { matched: false, receiver: null };
 
-   let allParticipants = null;
-   let allPairings = null;
+   function parseWishlist(wishlist) {
+      if (!wishlist) {
+         return [];
+      }
+      if (Array.isArray(wishlist)) {
+         return wishlist;
+      }
+      if (typeof wishlist === 'string') {
+         try {
+            return JSON.parse(wishlist);
+         } catch (error) {
+            return [];
+         }
+      }
+      return [];
+   }
 
-   async function getParticipants() {
-      const { data, error } = await supabaseClient.from('participants').select('*');
-     
-      if (error) {
-         console.log('Error:', error);
-         allParticipants = [];
-      } else {
-         allParticipants = data;
-      };
-     };
-     getParticipants();
+   function clearSession() {
+      API.logout();
+      localStorage.removeItem('currentUser');
+      localStorage.removeItem('isLoggedIn');
+      currentUser = null;
+      givingGift = null;
+      assignment = { matched: false, receiver: null };
+   }
 
-   async function getPairings() {
-      const {data: pairings, error: fetchError} = await supabaseClient.from('pairings').select('giver_id, receiver_id');
-      if (fetchError) {
-         console.log('Fetch Pairings Error:', fetchError);
-         allPairings = [];
-      } else {
-         allPairings = pairings;
-      };
-   };
-   getPairings();
+   async function restoreSession() {
+      if (!API.token) {
+         return false;
+      }
 
-   const savedUser = localStorage.getItem('currentUser');
-   const isLoggedIn = localStorage.getItem('isLoggedIn');
-
-   if (savedUser && isLoggedIn) {
-      currentUser = JSON.parse(savedUser);
-
-      loggedInUser();
-   };
+      try {
+         const data = await API.me();
+         currentUser = data.user;
+         localStorage.setItem('currentUser', JSON.stringify(currentUser));
+         localStorage.setItem('isLoggedIn', true);
+         return true;
+      } catch (error) {
+         clearSession();
+         return false;
+      }
+   }
 
    async function loggedInUser() {
       $('header').show();
       $('#logout-button').show();
       $('.logged-in').show();
       $('.login-prompt').hide();
+      $('#error-banner').hide();
 
       $('#welcome-message').text(`Hello ${currentUser.name}!`);
       loadWishlist();
@@ -59,38 +62,31 @@ jQuery(document).ready(function($) {
          $('.admin-link').hide();
       };
 
-      if (currentUser.matched == true) {
-         if (!allPairings || allPairings.length === 0) {
-            await getPairings();
-         };
-         if (!allParticipants || allParticipants.length === 0) {
-            await getParticipants();
-         };
-         
-         const userPairing = allPairings.find(pairing => pairing.giver_id === currentUser.id);
-         
-         const receiverId = userPairing.receiver_id;
-         const receiver = allParticipants.find(participant => participant.id === receiverId);
-         
-         $('#logged-in-prompt').text(`You are Secret Santa to ${receiver.name}!`);
+      try {
+         assignment = await API.assignment();
+      } catch (error) {
+         console.log('Assignment error:', error);
+         assignment = { matched: false, receiver: null };
+      }
 
-         loadReceiverWishlist(receiverId);
-         
+      if (assignment.matched && assignment.receiver) {
+         currentUser.matched = true;
+         localStorage.setItem('currentUser', JSON.stringify(currentUser));
+         $('#logged-in-prompt').text(`You are Secret Santa to ${assignment.receiver.name}!`);
+         $('#match-button').hide();
+         loadReceiverWishlist(assignment.receiver);
       } else {
          $('#logged-in-prompt').text('Press the Button Below ');
          $('#match-button').show();
          $('#receiver-wishlist-container').hide();
-      };      
+      };
    };
 
    function loadWishlist() {
       const wishlistContainer = $('#wishlist-items');
       wishlistContainer.empty();
 
-      let wishList = [];
-      if (currentUser.wishlist) {
-         wishList = typeof currentUser.wishlist === 'string' ? JSON.parse(currentUser.wishlist) : currentUser.wishlist;
-      };
+      const wishList = parseWishlist(currentUser.wishlist);
 
       wishList.forEach((item, index) => {
          const itemHtml = `
@@ -112,13 +108,11 @@ jQuery(document).ready(function($) {
       });
    };
 
-   function loadReceiverWishlist(receiverId) {
+   function loadReceiverWishlist(receiver) {
       const container = $('#receiver-wishlist-container');
       const itemsList = $('#receiver-wishlist-items');
       const title = $('#receiver-wishlist-title');
 
-      const receiver = allParticipants.find(participant => participant.id === receiverId);
-      
       if (!receiver) {
          console.error('Receiver not found');
          container.hide();
@@ -126,20 +120,15 @@ jQuery(document).ready(function($) {
       }
 
       container.show();
-
       title.text(`${receiver.name}'s Wishlist`);
-
       itemsList.empty();
 
-      let wishList = [];
-      if (receiver.wishlist) {
-         wishList = typeof receiver.wishlist === 'string' ? JSON.parse(receiver.wishlist) : receiver.wishlist;
-      };
+      const wishList = parseWishlist(receiver.wishlist);
 
       if (wishList.length === 0) {
          itemsList.append('<li>No items on the wishlist yet.</li>');
       } else {
-         wishList.forEach((item, index) => {
+         wishList.forEach((item) => {
             const itemHtml = `
                <li class="receiver-wishlist-item">
                   <div class="item-name">${item.name || 'Unnamed Item'}</div>
@@ -154,37 +143,26 @@ jQuery(document).ready(function($) {
    };
 
    async function saveWishlist(wishListArray) {
-      const wishlistJson = JSON.stringify(wishListArray);
-
       if (!currentUser || !currentUser.id) {
          console.error('currentUser.id is missing');
          alert('Error: User ID not found. Please log in again.');
          return false;
       }
 
-      console.log('Saving wishlist for user ID:', currentUser.id);
-
-      const {data, error} = await supabaseClient.from('participants').update({wishlist: wishlistJson}).eq('id', currentUser.id).select().single();
-      if (error) {
+      try {
+         const data = await API.saveWishlist(wishListArray);
+         currentUser = data.user;
+         localStorage.setItem('currentUser', JSON.stringify(currentUser));
+         return true;
+      } catch (error) {
          console.error('Error saving wishlist:', error);
          alert('Failed to save wishlist: ' + error.message);
          return false;
       }
-
-      console.log('Wishlist saved successfully:', data);
-
-      currentUser.wishlist = wishlistJson;
-      localStorage.setItem('currentUser', JSON.stringify(currentUser));
-
-      return true;
    };
 
    async function addWishlistItem(name, link) {
-      let wishList = [];
-      if (currentUser.wishlist) {
-         wishList = typeof currentUser.wishlist === 'string' ? JSON.parse(currentUser.wishlist) : currentUser.wishlist;
-      };
-
+      const wishList = parseWishlist(currentUser.wishlist);
       wishList.push({name: name, link: link});
 
       const success = await saveWishlist(wishList);
@@ -194,11 +172,7 @@ jQuery(document).ready(function($) {
    };
    
    async function removeWishlistItem(index) {
-      let wishList = [];
-      if (currentUser.wishlist) {
-         wishList = typeof currentUser.wishlist === 'string' ? JSON.parse(currentUser.wishlist) : currentUser.wishlist;
-      };
-
+      const wishList = parseWishlist(currentUser.wishlist);
       wishList.splice(index, 1);
 
       const success = await saveWishlist(wishList);
@@ -208,11 +182,7 @@ jQuery(document).ready(function($) {
    };
 
    async function editWishlistItem(index, newName, newLink) {
-      let wishList = [];
-      if (currentUser.wishlist) {
-         wishList = typeof currentUser.wishlist === 'string' ? JSON.parse(currentUser.wishlist) : currentUser.wishlist;
-      };
-
+      const wishList = parseWishlist(currentUser.wishlist);
       wishList[index] = {name: newName, link: newLink};
 
       const success = await saveWishlist(wishList);
@@ -222,11 +192,7 @@ jQuery(document).ready(function($) {
    };
 
    function showEditForm(index) {
-      let wishList = [];
-      if (currentUser.wishlist) {
-         wishList = typeof currentUser.wishlist === 'string' ? JSON.parse(currentUser.wishlist) : currentUser.wishlist;
-      };
-
+      const wishList = parseWishlist(currentUser.wishlist);
       const item = wishList[index];
       const listItem = $(`.wishlist-item[data-index="${index}"]`);
 
@@ -239,101 +205,51 @@ jQuery(document).ready(function($) {
          </div>
       `;
 
-      // Replace the item display with edit form
       listItem.find('.item-display, .item-actions').hide();
       listItem.append(editForm);
    }
 
    $('#pin-submit').click(async function() {
       const pin = $('#pin-input').val();
-
-      const {data, error} = await supabaseClient.from('participants').select('*').eq('pin', pin).single();
+      $('#error-banner').hide();
 
       if (pin === ''){
          $('#error-banner').text('Please Enter a Pin').show();
-      } else if(pin.length < 4 || pin.length > 4) {
+         return;
+      }
+      if (pin.length !== 4) {
          $('#error-banner').text('Pin is too long or short').show();
-      } else if (error){
-         $('#error-banner').text('Invalid or Non-Existant Pin').show();
-      } else {
-         $('#pin-input').val('');
-
-         currentUser = data;
-         localStorage.setItem('currentUser', JSON.stringify(currentUser));
-         localStorage.setItem('isLoggedIn', true);
-
-         await loggedInUser();
+         return;
       }
 
+      try {
+         currentUser = await API.login(pin);
+         localStorage.setItem('currentUser', JSON.stringify(currentUser));
+         localStorage.setItem('isLoggedIn', true);
+         $('#pin-input').val('');
+         await loggedInUser();
+      } catch (error) {
+         $('#error-banner').text(error.message || 'Invalid or Non-Existant Pin').show();
+      }
    });
 
    $('#match-button').click(async function() {
       $('#match-button').prop('disabled', true);
       $('#match-button').text('Matching...');
+      $('#error-banner').hide();
 
-      const {data: allParticipants, error: fetchError} = await supabaseClient.from('participants').select('*');
-      if (fetchError) {
-         console.log('Fetch All Error:', fetchError);
-
+      try {
+         assignment = await API.match();
+         currentUser.matched = true;
+         localStorage.setItem('currentUser', JSON.stringify(currentUser));
+         $('#logged-in-prompt').text(`You are Secret Santa to ${assignment.receiver.name}!`);
+         $('#match-button').hide();
+         loadReceiverWishlist(assignment.receiver);
+      } catch (error) {
+         $('#error-banner').text(error.message || 'Error saving pairing. Try Again Please.').show();
          $('#match-button').prop('disabled', false);
          $('#match-button').text('Match');
-         return;
       }
-
-      const {data:existingPairings, error: pairingError} = await supabaseClient.from('pairings').select('receiver_id');
-      if (pairingError) {
-         console.log('Pairing Error:', pairingError);
-
-         $('#error-banner').text('Error fetching existing pairings. Try Again Please.').show();
-         $('#match-button').prop('disabled', false);
-         $('#match-button').text('Match');
-         return;
-      }
-      const takenReceiverIds = existingPairings.map(pairing => pairing.receiver_id);
-
-      const eligibleParticipants = allParticipants.filter(participant => {
-         return participant.id !== currentUser.id 
-         && participant.family_group !== currentUser.family_group 
-         && !takenReceiverIds.includes(participant.id)
-         && !participant.opt_out;
-      });
-
-      if (eligibleParticipants.length === 0) {
-         $('#error-banner').text('No eligible participants found. Please try again later.').show();
-
-         $('#match-button').prop('disabled', false);
-         $('#match-button').text('Match');
-         return;
-      }
-
-      const randomIndex = Math.floor(Math.random() * eligibleParticipants.length);
-      const matchedParticipant = eligibleParticipants[randomIndex];
-
-      const {data: newPairing, error: insertError} = await supabaseClient.from('pairings').insert({giver_id: currentUser.id, receiver_id: matchedParticipant.id}).select().single();
-      if (insertError) {
-         console.log('Insert Error:', insertError);
-
-         $('#error-banner').text('Error saving pairing. Try Again Please.').show();
-         $('#match-button').prop('disabled', false);
-         $('#match-button').text('Match');
-         return;
-      }
-
-      const {error: updateError} = await supabaseClient.from('participants').update({matched:true}).eq('id', currentUser.id);
-      if (updateError) {
-         console.log('Update Error:', updateError);
-
-         $('#error-banner').text('Error updating participant. Try Again Please.').show();
-         $('#match-button').prop('disabled', false);
-         $('#match-button').text('Match');
-         return;
-      }
-
-      currentUser.matched = true;
-      localStorage.setItem('currentUser', JSON.stringify(currentUser));
-
-      $('#logged-in-prompt').text(`You are Secret Santa to ${matchedParticipant.name}!`);
-      $('#match-button').hide();
    });
 
    $('#add-item').click(function() {
@@ -391,15 +307,18 @@ jQuery(document).ready(function($) {
    $('#logout-button').click(function() {
       $('header').hide();
       $('#logout-button').hide();
-      localStorage.removeItem('currentUser');
-      localStorage.removeItem('isLoggedIn');
-
-      currentUser = null;
-      givingGift = null;
+      clearSession();
 
       $('#pin-input').val('');
       $('.logged-in').hide();
       $('.login-prompt').show();
       $('.admin-link').hide();
+      $('#match-button').prop('disabled', false).text('Match');
+   });
+
+   restoreSession().then((ok) => {
+      if (ok) {
+         loggedInUser();
+      }
    });
 });

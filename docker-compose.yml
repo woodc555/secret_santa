@@ -1,0 +1,14 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: santa
+      POSTGRES_PASSWORD: santa
+      POSTGRES_DB: secret_santa
+    ports:
+      - "5432:5432"
+    volumes:
+      - secret_santa_pg:/var/lib/postgresql/data
+
+volumes:
+  secret_santa_pg:
