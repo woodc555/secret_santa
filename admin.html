@@ -28,7 +28,11 @@
             </span>
 
             <div id="participants-table-container">
-                <h3>Participants & Matches</h3>
+                <div class="admin-table-header">
+                    <h3>Participants & Matches</h3>
+                    <button type="button" id="reset-pairings-button">Reset Pairings</button>
+                </div>
+                <span id="admin-status" class="alert" style="display: none;"></span>
                 <table id="participants-table">
                     <thead>
                         <tr>
@@ -44,6 +48,19 @@
 
                     </tbody>
                 </table>
+            </div>
+        </div>
+
+        <div id="reset-modal" style="display: none;">
+            <div class="modal-overlay">
+                <div class="modal-content">
+                    <h3>Reset All Pairings?</h3>
+                    <p>This will delete every Secret Santa match and mark all participants as unmatched so they can draw again. Participants and wishlists will not be changed.</p>
+                    <div class="modal-buttons">
+                        <button type="button" id="cancel-reset">Cancel</button>
+                        <button type="button" id="confirm-reset">Yes, Reset Pairings</button>
+                    </div>
+                </div>
             </div>
         </div>
 

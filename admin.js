@@ -147,6 +147,45 @@ jQuery(document).ready(function($) {
         $('#edit-form')[0].reset();
     };
 
+    function showAdminStatus(message, isError) {
+        const banner = $('#admin-status');
+        banner.text(message).toggleClass('alert-error', Boolean(isError)).show();
+    }
+
+    function openResetModal() {
+        $('#admin-status').hide();
+        $('#reset-modal').show();
+    }
+
+    function closeResetModal() {
+        $('#reset-modal').hide();
+        $('#confirm-reset').prop('disabled', false);
+    }
+
+    async function resetPairings() {
+        $('#confirm-reset').prop('disabled', true);
+
+        try {
+            const result = await API.resetPairings();
+            await fetchPairings();
+            buildParticipantsTable();
+            closeResetModal();
+            const count = result.pairingsDeleted || 0;
+            showAdminStatus(`Pairings reset. ${count} match${count === 1 ? '' : 'es'} cleared. Everyone can draw again.`, false);
+        } catch (error) {
+            console.log('Error Resetting Pairings:', error);
+            closeResetModal();
+            if (error.status === 401 || error.status === 403) {
+                clearSession();
+                $('.logged-in').hide();
+                $('.login-prompt').show();
+                $('#error-banner').text(error.message).show();
+                return;
+            }
+            showAdminStatus('Failed to reset pairings: ' + error.message, true);
+        }
+    }
+
     $('#pin-submit').click(async function() {
         const pin = $('#pin-input').val();
 
@@ -209,14 +248,32 @@ jQuery(document).ready(function($) {
         closeEditModal();
     });
 
+    $('#reset-pairings-button').click(function() {
+        openResetModal();
+    });
+
+    $('#cancel-reset').click(function() {
+        closeResetModal();
+    });
+
+    $('#confirm-reset').click(async function() {
+        await resetPairings();
+    });
+
     $('#edit-giving-to').on('change', function() {
         const selectedValue = $(this).val();
         $('#edit-matched').prop('checked', selectedValue !== '' && selectedValue !== null);
     });
 
-    $('.modal-overlay').click(function(e) {
+    $('#edit-modal .modal-overlay').click(function(e) {
         if (e.target === this) {
             closeEditModal();
+        }
+    });
+
+    $('#reset-modal .modal-overlay').click(function(e) {
+        if (e.target === this) {
+            closeResetModal();
         }
     });
 

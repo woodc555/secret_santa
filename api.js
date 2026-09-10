@@ -67,4 +67,10 @@ const API = {
             body: JSON.stringify(payload),
         });
     },
+
+    resetPairings() {
+        return this.request('/api/admin/reset-pairings', {
+            method: 'POST',
+        });
+    },
 };

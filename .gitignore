@@ -31,3 +31,7 @@ Thumbs.db
 .env.local
 
 config.js
+
+# Data exports with pins — never commit
+*.csv
+import.sql

@@ -292,6 +292,22 @@ app.put('/api/admin/participants/:id', requireAuth, wrap(loadUser), requireAdmin
     }
 }));
 
+app.post('/api/admin/reset-pairings', requireAuth, wrap(loadUser), requireAdmin, wrap(async (req, res) => {
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+        const deleted = await client.query('DELETE FROM pairings');
+        await client.query('UPDATE participants SET matched = false');
+        await client.query('COMMIT');
+        res.json({ reset: true, pairingsDeleted: deleted.rowCount });
+    } catch (error) {
+        await client.query('ROLLBACK');
+        throw error;
+    } finally {
+        client.release();
+    }
+}));
+
 app.use('/style', express.static(path.join(__dirname, 'style')));
 app.use('/images', express.static(path.join(__dirname, 'images')));
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
